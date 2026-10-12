@@ -13,7 +13,16 @@ function urlFor(store,id,url){if(url&&/^https?:\/\//i.test(String(url)))return S
 async function state(){const d=await chrome.storage.local.get([PK,MK]);return {p:d[PK]||{},m:d[MK]||{}}}
 async function save(p,m){await chrome.storage.local.set({[PK]:p,[MK]:m})}
 async function alertUser(title,p,detail){try{await chrome.notifications.create("ptcg-"+Date.now()+"-"+Math.random().toString(36).slice(2,6),{type:"basic",iconUrl:"icon.svg",title:title,message:(p.store+": "+p.name+(p.price?" · "+p.price:"")+"\n"+(detail||p.url||"")).slice(0,240),priority:2})}catch(e){console.warn("Notification failed",String(e))}}
-async function json(url,opts){const r=await fetch(url,{cache:"no-store",...opts});const t=await r.text();if(!r.ok)throw Error("HTTP "+r.status+" "+t.slice(0,90));try{return JSON.parse(t)}catch{throw Error("Expected JSON: "+t.slice(0,70))}}
+async function json(url,opts){
+ const r=await fetch(url,{cache:"no-store",...opts}),t=await r.text();
+ const challenge=/captcha|recaptcha|hcaptcha|verify (that )?you are (a )?human|not a robot|robot check|unusual traffic|security challenge|access denied/i.test(t.slice(0,18000));
+ if((r.status===403||r.status===429||challenge)&&/target\.com|costco\.com|samsclub\.com/i.test(url)){
+  let store=/target\.com/i.test(url)?"Target":/costco\.com/i.test(url)?"Costco":"Sam's Club";
+  void recordCaptcha({store,url,title:"Retailer API request blocked",evidence:"HTTP "+r.status+(challenge?" with a CAPTCHA/anti-bot challenge response":"; human verification may be required"),detectedAt:new Date().toISOString()},{});
+ }
+ if(!r.ok)throw Error("HTTP "+r.status+" "+t.slice(0,90));
+ try{return JSON.parse(t)}catch{throw Error("Expected JSON: "+t.slice(0,70))}
+}
 function key(p){return p.store+":"+String(p.id||p.url||norm(p.name))}
 function targetSearchUrl(term,purchasable){const q=new URLSearchParams({key:TARGET_KEY,keyword:term,channel:"WEB",page:"/s?searchTerm="+term.replace(/ /g,"+"),visitor_id:TARGET_VISITOR_ID,pricing_store_id:TARGET_STORE,store_ids:TARGET_STORE,scheduled_delivery_store_id:TARGET_STORE,zip:ZIP_DEFAULT,default_purchasability_filter:String(purchasable),include_sponsored:"false",platform:"desktop",count:"24",offset:"0"});return "https://redsky.target.com/redsky_aggregations/v1/web/plp_search_v2?"+q}
 async function targetDiscovery(){

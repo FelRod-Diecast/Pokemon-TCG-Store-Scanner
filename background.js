@@ -51,4 +51,18 @@ async function stock(){let result={};try{result.Target=await targetStock()}catch
 function schedule(){chrome.alarms.create(DISCOVERY,{delayInMinutes:0.2,periodInMinutes:5});chrome.alarms.create(STOCK,{delayInMinutes:0.5,periodInMinutes:3})}
 chrome.runtime.onInstalled.addListener(schedule);chrome.runtime.onStartup.addListener(schedule);
 chrome.alarms.onAlarm.addListener(a=>{if(a.name===DISCOVERY)void discover();if(a.name===STOCK)void stock()});
-chrome.runtime.onMessage.addListener((msg,sender,reply)=>{if(msg?.type==="GET_DASHBOARD"){state().then(({p,m})=>reply({products:Object.values(p).sort((a,b)=>String(b.lastChecked||b.firstSeen).localeCompare(String(a.lastChecked||a.firstSeen))),meta:m})).catch(e=>reply({products:[],meta:{},error:String(e)}));return true}if(msg?.type==="SCAN_NOW"){Promise.all([discover(),stock()]).then(result=>reply({ok:true,result})).catch(e=>reply({ok:false,error:String(e)}));return true}});
+async function recordCaptcha(msg,sender){
+ const {p,m}=await state();m.captchaChallenges=m.captchaChallenges||{};
+ const key=String(msg.store)+"|"+new URL(msg.url).hostname,old=m.captchaChallenges[key],now=Date.now();
+ const item={store:String(msg.store||"Retailer"),url:String(msg.url||""),title:String(msg.title||"Human verification requested"),evidence:String(msg.evidence||"Challenge detected"),firstDetectedAt:old?.firstDetectedAt||msg.detectedAt||new Date().toISOString(),lastDetectedAt:msg.detectedAt||new Date().toISOString(),lastNotifiedAt:now,active:true,tabId:sender.tab?.id??old?.tabId??null};
+ m.captchaChallenges[key]=item;await save(p,m);
+ if(!old||now-Number(old.lastNotifiedAt||0)>=10*60*1000){
+  try{await chrome.notifications.create("ptcg-human-check-"+Date.now(),{type:"basic",iconUrl:"icon.svg",title:"Human verification may be required",message:item.store+" is showing a CAPTCHA/robot check. Open the retailer tab and complete it yourself.",priority:2})}catch(e){console.warn("Challenge notification failed",String(e))}
+ }
+}
+chrome.runtime.onMessage.addListener((msg,sender,reply)=>{
+ if(msg?.type==="CAPTCHA_DETECTED"&&msg.url&&msg.store){recordCaptcha(msg,sender).then(()=>reply({ok:true})).catch(e=>reply({ok:false,error:String(e)}));return true}
+ if(msg?.type==="GET_DASHBOARD"){state().then(({p,m})=>reply({products:Object.values(p).sort((a,b)=>String(b.lastChecked||b.firstSeen).localeCompare(String(a.lastChecked||a.firstSeen))),meta:m})).catch(e=>reply({products:[],meta:{},error:String(e)}));return true}
+ if(msg?.type==="CLEAR_CHALLENGE"){state().then(async({p,m})=>{if(m.captchaChallenges?.[msg.key])m.captchaChallenges[msg.key].active=false;await save(p,m);reply({ok:true})}).catch(e=>reply({ok:false,error:String(e)}));return true}
+ if(msg?.type==="SCAN_NOW"){Promise.all([discover(),stock()]).then(result=>reply({ok:true,result})).catch(e=>reply({ok:false,error:String(e)}));return true}
+});

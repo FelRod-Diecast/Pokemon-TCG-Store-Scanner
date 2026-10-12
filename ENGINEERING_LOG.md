@@ -51,3 +51,14 @@ File: `pokemon-tcg-scanner-state-2026-10-12T19-05-09-759Z.json`, exported 2026-1
 - Live validation:
 - Remaining risks:
 - Next step:
+
+
+### 2026-10-12 — Capture Sam's Club product-record fields for parser repair
+- Evidence: the saved 19:05 UTC export showed a successful Sam's Club search response with `payload.records` containing 32 records, but the current recursive walk inspected 1,159 objects and returned zero candidates. The export contains response shape and sampled generic names, not the full original response body, so the exact nested product-title field is not yet proven.
+- Changes: added bounded diagnostics for the first eight `payload.records` entries: record keys, product ID/id, scalar descriptor fields, scalar search/SEO fields, SKU keys, and SKU descriptor fields. Added a smoke test to guard this diagnostic output. No extraction behavior or inventory behavior was changed in this step.
+- Files: `background.js`, `tests/smoke.test.js`, and this log.
+- Commit/head: `dde94c400450f672f7c9293628c50459a692af66`.
+- Tests: GitHub Actions run #50 for this exact head completed `npm run check` successfully and the `npm test` step successfully. Job cleanup was still marked in progress when checked; both validation steps themselves reported success.
+- Live validation: not yet verified. Target and Costco still had zero accepted candidates in the latest user export; Sam's Club parser still uses the old recursive walk. No claim of working live discovery is made.
+- Remaining risks: Target's new search route needs live confirmation; Costco's returned product records need deeper title/filter diagnosis; Sam's Club product title fields and empty `clubId` need verification.
+- Next step: use the new record-level diagnostic samples from the next scan export to implement a record-only Sam's Club parser with positive/negative fixture tests; then inspect Costco's candidate filtering and Target query coverage. Keep PR #6 draft and `main` untouched until live evidence improves.

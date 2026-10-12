@@ -81,7 +81,7 @@ async function targetStock(){
 }
 function costcoStatus(v){const a=Object.entries(v||{}).filter(([k])=>/availability/i.test(k)).flatMap(([,x])=>Array.isArray(x)?x:[x]).map(x=>String(x||"").toUpperCase());if(a.some(x=>/IN_STOCK|LOW_STOCK|AVAILABLE|SELLABLE/.test(x)))return true;if(a.some(x=>/OUT_OF_STOCK|UNAVAILABLE|SOLD_OUT|NOT_AVAILABLE/.test(x)))return false;return null}
 async function costcoScan(){
- const {p,m}=await state(),found=new Map(),terms=["pokemon","pokemon trading cards","pokemon booster","pokemon elite trainer","pokemon collection","pokemon trading card game"];let successful=0,raw=0;const errors=[],sampleNames=[],requestLog=[];let sampleShape=null;
+ const {p,m}=await state(),found=new Map(),terms=["pokemon","pokemon trading cards","pokemon booster","pokemon elite trainer","pokemon collection","pokemon trading card game","pokemon 30th anniversary","pokemon 30th celebration","pokemon ultra premium collection","pokemon etb booster bundle"];let successful=0,raw=0;const errors=[],sampleNames=[],requestLog=[];let sampleShape=null;
  for(const term of terms){
   const trace={query:term,phase:"search",at:new Date().toISOString()};const foundBefore=found.size;
   try{

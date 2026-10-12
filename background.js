@@ -83,7 +83,7 @@ function costcoStatus(v){const a=Object.entries(v||{}).filter(([k])=>/availabili
 async function costcoScan(){
  const {p,m}=await state(),found=new Map(),terms=["pokemon","pokemon trading cards","pokemon booster","pokemon elite trainer","pokemon collection","pokemon trading card game","pokemon 30th anniversary","pokemon 30th celebration","pokemon ultra premium collection","pokemon etb booster bundle"];let successful=0,raw=0;const errors=[],sampleNames=[],requestLog=[];let sampleShape=null;
  for(const term of terms){
-  const trace={query:term,phase:"search",at:new Date().toISOString()};const foundBefore=found.size;
+  const trace={query:term,phase:"search",at:new Date().toISOString()};const foundBefore=found.size;let queryCandidates=0;
   try{
    const d=await json("https://gdx-api.costco.com/catalog/search/api/v1/search",{method:"POST",headers:COSTCO_HEADERS,body:JSON.stringify({visitorId:"0000000000000000000000000000000000",query:term,pageSize:96,offset:0,orderBy:null,searchMode:"page",personalizationEnabled:false,warehouseId:"129-wh",shipToPostal:ZIP_DEFAULT,shipToState:"TX",deliveryLocations:["129-wh"],filterBy:[],pageCategories:[]})},trace);
    successful++;const rows=d?.searchResult?.results||[];raw+=rows.length;trace.rawRows=rows.length;

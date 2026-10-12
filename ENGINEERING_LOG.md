@@ -80,3 +80,11 @@ File: `pokemon-tcg-scanner-state-2026-10-12T19-05-09-759Z.json`, exported 2026-1
 - Tests: pending exact-head CI verification. No local execution was available in this connector session.
 - Live validation: pending. This fixes title classification only; it does not establish that Costco's API returns SKU 2007497 or that a live discovery result is saved.
 - Next step: verify exact branch-head CI; then add source-attributed upcoming leads and fix retailer response parsing based on actual response samples. Keep `main` untouched.
+
+### 2026-10-12 — Add weekly-guide Sam's Club discovery vocabulary
+- Evidence: user supplied a weekly Pokémon release graphic covering Oct 12–17 that reports Sam's Club Ascended Heroes Focused Fighters boxes and ETBs, plus Target/Costco 30th Anniversary product categories. These are community-published leads, not independently confirmed inventory or drop times.
+- Changes: extended background and shared title filters with `ascended heroes` and `focused fighters`; added a positive test for representative Sam's Club product titles.
+- Commits: `7a954cc2495469b28026cf3c8a2e5cb9ab41c537` (background filter), `abacbc2255d1ceb8c5f16bd44ab0ee278fa2d1a1` (shared filter), `fabd525c5b97945676a0a6d659b65c66f42fdc5c` (tests).
+- Tests: pending exact-head CI verification; no local test run in this connector session.
+- Live validation: pending. Sam's Club currently requests a fixed browse category and still uses broad recursive extraction; adding title vocabulary does not prove the API will return the reported products.
+- Next step: verify CI at the exact current head; then repair Sam's Club record-only parsing and Costco row extraction based on observed field samples. Preserve reported leads as unconfirmed and keep `main` untouched.

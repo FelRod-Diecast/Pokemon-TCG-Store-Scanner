@@ -8,10 +8,9 @@ async function render(){
  const lines=stores.map(s=>{const x=last[s];return '<div class="storeline"><b>'+esc(s)+'</b>: '+(x?esc(x.candidates+" candidates · "+new Date(x.at).toLocaleTimeString()+(x.baseline?" · baseline":"")):"waiting for first automatic scan")+'</div>'}).join("");
  const ins=ps.filter(p=>p.available===true).length,out=ps.filter(p=>p.available===false).length,unk=ps.length-ins-out;
  const challenges=Object.entries(m.captchaChallenges||{}).filter(([,v])=>v.active).map(([k,v])=>'<div class="challenge"><b>⚠️ Human verification may be required — '+esc(v.store)+'</b><div>'+esc(v.evidence)+'</div><div><a href="'+esc(v.url)+'" target="_blank" rel="noreferrer">Open retailer tab to complete verification</a></div><button class="clearChallenge secondary" data-key="'+esc(k)+'">Dismiss alert</button></div>').join("");
- $("summary").innerHTML=challenges+ $("summary").innerHTML;
  const discovery=m.lastDiscoveryRun?.at?"Last discovery cycle: "+new Date(m.lastDiscoveryRun.at).toLocaleString():"Discovery cycle pending";
  const stock=m.lastStockRun?.at?"Last Target stock check: "+new Date(m.lastStockRun.at).toLocaleTimeString():"Stock check pending";
- $("summary").innerHTML='<b>'+ps.length+' tracked products</b> · '+ins+' availability signals · '+out+' sold out · '+unk+' unknown'+lines+'<div class="statusline">'+esc(discovery)+'</div><div class="statusline">'+esc(stock)+'</div>';
+ $("summary").innerHTML=challenges+'<b>'+ps.length+' tracked products</b> · '+ins+' availability signals · '+out+' sold out · '+unk+' unknown'+lines+'<div class="statusline">'+esc(discovery)+'</div><div class="statusline">'+esc(stock)+'</div>';
  $("products").innerHTML=ps.length?ps.slice(0,100).map(p=>'<div class="product"><a href="'+esc(p.url)+'" target="_blank" rel="noreferrer">'+esc(p.name)+'</a><div class="muted">'+esc(p.store)+(p.price?' · '+esc(p.price):"")+(p.id?' · ID '+esc(p.id):"")+'</div><div class="meta"><span class="pill '+(p.available===true?"in_stock":p.available===false?"sold_out":"unknown")+'">'+esc(label(p))+'</span><span class="pill">Seen '+esc(new Date(p.lastSeen||p.firstSeen).toLocaleString())+'</span></div></div>').join(""):'<p class="muted">No products discovered yet. The background scanner will populate this list after a retailer API responds successfully.</p>';
 }
 $("refresh").addEventListener("click",render);

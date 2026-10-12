@@ -72,3 +72,11 @@ File: `pokemon-tcg-scanner-state-2026-10-12T19-05-09-759Z.json`, exported 2026-1
 - Live validation: pending. No current claim that the UPC listing or drop is confirmed.
 - Remaining risks: Costco may not return these terms through its public search API; the current candidate ID/title field mapping may still be inadequate; the parser does not yet preserve external discovery leads with no live retailer result or source provenance.
 - Next step: check GitHub Actions for the exact branch head; inspect and fix test failures if any. Then build a source-attributed upcoming-leads registry (community reports are leads, not confirmed retailer inventory) and continue the record-level Costco/Sam's Club parser work without changing `main`.
+
+### 2026-10-12 — Align shared product-title filter with upcoming-product discovery
+- Evidence: source review found the background discovery filter had added `ETB`, `ultra premium collection`, `30th anniversary`, and `30th celebration`, but the shared title classifier used by the extension/tests had not been updated. That inconsistency meant upcoming 30th product titles were not consistently classified across scanner components.
+- Changes: updated `shared.js` to recognize the same terms and added positive tests for `Pokemon 30th Anniversary ETB + Booster Bundle` and `Pokémon 30th Celebration Ultra Premium Collection`.
+- Commits: `54cab3a18028aa4cc4420d4cc431b62ef7d88cbf` (filter), `16d1009629924cde058c98e6a3a5ec1ed94a0dcb` (tests).
+- Tests: pending exact-head CI verification. No local execution was available in this connector session.
+- Live validation: pending. This fixes title classification only; it does not establish that Costco's API returns SKU 2007497 or that a live discovery result is saved.
+- Next step: verify exact branch-head CI; then add source-attributed upcoming leads and fix retailer response parsing based on actual response samples. Keep `main` untouched.

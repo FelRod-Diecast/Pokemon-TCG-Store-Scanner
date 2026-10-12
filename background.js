@@ -47,7 +47,7 @@ async function json(url,opts,trace){
  try{const data=JSON.parse(t);if(trace)trace.responseShape=inspectResponseShape(data);return data}catch(e){if(trace)trace.parseError=String(e);throw Error("Expected JSON: "+t.slice(0,70))}
 }
 function key(p){return p.store+":"+String(p.id||p.url||norm(p.name))}
-function targetSearchUrl(term,purchasable){const page="/s/"+String(term||"").trim().replace(/\\s+/g," ");const q=new URLSearchParams({key:TARGET_KEY,keyword:term,channel:"WEB",page,visitor_id:TARGET_VISITOR_ID,pricing_store_id:TARGET_STORE,store_ids:TARGET_STORE,scheduled_delivery_store_id:TARGET_STORE,zip:ZIP_DEFAULT,default_purchasability_filter:String(purchasable),include_sponsored:"false",platform:"desktop",count:"24",offset:"0"});return "https://redsky.target.com/redsky_aggregations/v1/web/plp_search_v2?"+q}
+function targetSearchUrl(term,purchasable){const page="/s/"+String(term||"").trim().replace(/\s+/g," ");const q=new URLSearchParams({key:TARGET_KEY,keyword:term,channel:"WEB",page,visitor_id:TARGET_VISITOR_ID,pricing_store_id:TARGET_STORE,store_ids:TARGET_STORE,scheduled_delivery_store_id:TARGET_STORE,zip:ZIP_DEFAULT,default_purchasability_filter:String(purchasable),include_sponsored:"false",platform:"desktop",count:"24",offset:"0"});return "https://redsky.target.com/redsky_aggregations/v1/web/plp_search_v2?"+q}
 async function targetDiscovery(){
  const {p,m}=await state(),found=new Map();let successful=0,raw=0;const errors=[],sampleNames=[],requestLog=[];let sampleShape=null;
  for(const term of ["pokemon booster pack","pokemon tcg","pokemon elite trainer box","pokemon trading cards"]){

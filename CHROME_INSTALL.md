@@ -1,18 +1,18 @@
-# Install in Google Chrome
+# Install Pokémon TCG Store Scanner in Chrome
 
-The extension uses Manifest V3 APIs shared by current Google Chrome and Microsoft Edge. Use this repository as the unpacked extension in Chrome; no separate scanner codebase is required.
-
-1. On GitHub, open the repository page and choose **Code → Download ZIP**.
-2. Extract the ZIP to a permanent folder (do not select the ZIP itself).
-3. In Chrome, open `chrome://extensions`.
+1. Open the repository: https://github.com/FelRod-Diecast/Pokemon-TCG-Store-Scanner
+2. Click **Code → Download ZIP** and extract it to a folder you will keep.
+3. Open `chrome://extensions`.
 4. Turn on **Developer mode**.
-5. Click **Load unpacked** and select the extracted `Pokemon-TCG-Store-Scanner` folder that contains `manifest.json`.
-6. Pin the extension if desired, open its popup, and click **Open store searches**.
-7. Leave the retailer tabs open so the content scripts can inspect the pages and re-check them periodically.
+5. Click **Load unpacked** and select the extracted folder that contains `manifest.json`.
+6. Keep the extension enabled. It runs scheduled background discovery and stock checks; you do **not** need to open retailer search pages.
+7. Click the extension icon to see discovered products and timestamps. Use **Scan now** to request an immediate cycle.
 
-## Notes
+## What to verify
 
-- This is an early DOM-based scanner, not a guarantee of live inventory. Test each retailer in your own region and session.
-- A product listing is not proof of local stock or successful checkout. Status is inferred from visible page text and may remain **Unknown**.
-- If a retailer displays CAPTCHA or another human-verification challenge, complete it yourself. The extension does not bypass challenges or automate checkout.
-- For updates, download/extract the latest repository ZIP, then use **Reload** on `chrome://extensions` after replacing the unpacked folder's files.
+- After installation, open the extension popup and click **Scan now**.
+- Wait for the retailer requests to finish, then refresh the dashboard.
+- Check the extension's service-worker console from `chrome://extensions` → the extension's **service worker** link if a store remains empty. Failed retailer requests should appear there.
+- Verify each product directly at the retailer. An availability signal is not a guarantee that the item can be checked out.
+
+This is an early build. The automated tests do not prove the current retailer endpoints will respond successfully from your browser/network. It does not bypass CAPTCHA or automate checkout.

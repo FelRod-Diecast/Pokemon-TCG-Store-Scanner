@@ -25,3 +25,5 @@ test('Target stock checker does not label missing availability data as sold out'
 
 test('validates GTIN/UPC check digits and rejects malformed identifiers',()=>{for(const code of ['019621410433','19621410433','0019621410433','00019621410433']){if(code.length===12)assert.equal(s.normalizeGtin(code),code)}assert.equal(s.normalizeGtin('036000291452'),'036000291452');assert.equal(s.normalizeGtin('036000291453'),null);assert.equal(s.normalizeGtin('12345'),null);assert.equal(s.normalizeGtin('ABC000291452'),null)});
 test('extracts validated UPC/GTINs without accepting arbitrary digit strings',()=>{assert.deepEqual(s.extractGtins('UPC: 036000291452; invalid: 036000291453'),['036000291452']);assert.deepEqual(s.extractGtins('nothing here'),[])});
+
+test("stock cycle does not run retailer discovery as a fake inventory refresh",()=>{const b=fs.readFileSync(path.join(root,"background.js"),"utf8");const start=b.indexOf("async function stock()");const end=b.indexOf("function schedule()",start);const section=b.slice(start,end);assert.match(section,/targetStock\(\)/);assert.doesNotMatch(section,/costcoScan\(\)|samsScan\(\)/);assert.match(section,/NOT_IMPLEMENTED/)});

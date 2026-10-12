@@ -88,3 +88,11 @@ File: `pokemon-tcg-scanner-state-2026-10-12T19-05-09-759Z.json`, exported 2026-1
 - Tests: pending exact-head CI verification; no local test run in this connector session.
 - Live validation: pending. Sam's Club currently requests a fixed browse category and still uses broad recursive extraction; adding title vocabulary does not prove the API will return the reported products.
 - Next step: verify CI at the exact current head; then repair Sam's Club record-only parsing and Costco row extraction based on observed field samples. Preserve reported leads as unconfirmed and keep `main` untouched.
+
+### 2026-10-12 — Correct Target stock-state handling and document tracked-item gap
+- User reported tracked products are not changing to Sold Out. Source review confirms scheduled `stock()` only invokes `targetStock()`; Costco and Sam's Club do not have independent periodic stock-check functions. Costco status is only interpreted from search `variantRollupValues`; Sam's Club inventory lookup only runs for products matched in the current discovery response. This is a real coverage gap for tracked items.
+- Additional Target defect: the previous checker reduced missing/unknown fulfillment fields to `available=false`, potentially labeling a product sold out without an explicit unavailable signal. It also skipped product summaries missing from the response, which correctly should remain unknown rather than inferred sold out.
+- Changes: Target checker now maps explicit positive statuses to in stock; maps explicit unavailable shipping status to sold out only if store fulfillment signals don't contradict it; maps absent/ambiguous stock data to unknown and does not update lastChecked as if a stock verdict was obtained. It stores a human-readable `stockStatus` field. Added regression test guarding against unknown-as-sold-out.
+- Commits: `aa5be30b7c994ea7413dc2f8ba491d457308d19d` (Target state handling), `229aa7e424060682da6d7a12434f08aa77999412` (test).
+- Tests: not yet verified locally or via GitHub Actions at the exact branch head. Do not claim passing.
+- Remaining work: implement actual periodic stock rechecks for Costco and Sam's Club using confirmed product detail/inventory response fields; add pure-function unit tests for all stock states and retailer failures; verify alarms and latest CI. Keep `main` untouched.

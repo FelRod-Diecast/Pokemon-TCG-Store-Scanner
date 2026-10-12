@@ -161,7 +161,7 @@ async function discover(){
  }
  const {p,m}=await state();m.lastDiscoveryRun={at:new Date().toISOString(),results};await save(p,m);console.info('[PTCG] Discovery cycle finished',results);return results
 }
-async function stock(){let result={};try{result.Target=await targetStock()}catch(e){result.Target={error:String(e)}}const {p,m}=await state();m.lastStockRun={at:new Date().toISOString(),result};await save(p,m);return result}
+async function stock(){const result={};for(const [name,fn] of [["Target",targetStock],["Costco",costcoScan],["Sam's Club",samsScan]]){try{result[name]=await fn()}catch(e){result[name]={error:String(e)};console.warn("[PTCG] "+name+" stock refresh failed",e)}}const {p,m}=await state();m.lastStockRun={at:new Date().toISOString(),result};await save(p,m);return result}
 function schedule(){chrome.alarms.create(DISCOVERY,{delayInMinutes:0.2,periodInMinutes:5});chrome.alarms.create(STOCK,{delayInMinutes:0.5,periodInMinutes:3})}
 chrome.runtime.onInstalled.addListener(schedule);chrome.runtime.onStartup.addListener(schedule);
 chrome.alarms.onAlarm.addListener(a=>{if(a.name===DISCOVERY)void discover();if(a.name===STOCK)void stock()});

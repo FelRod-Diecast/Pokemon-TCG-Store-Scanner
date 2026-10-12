@@ -9,7 +9,7 @@ async function scan(message,sender){
  const baseline=!baselines[store], now=new Date().toISOString();let added=0,changes=0;
  for(const p of incoming){
   if(!p||!p.url||!p.title)continue;let u;try{u=new URL(p.url)}catch(e){continue}
-  if(!["target.com","costco.com","samsclub.com"].includes(u.hostname.replace(/^www\\./,"")))continue;
+  if(!["target.com","costco.com","samsclub.com"].includes(u.hostname.replace(/^www\./,"")))continue;
   const k=key({store,url:u.href,title:p.title}), s=status(p.status), old=products[k];
   if(!old){products[k]={store,title:String(p.title).slice(0,240),url:u.href,price:p.price||null,status:s,firstSeen:now,lastSeen:now,statusChangedAt:null};added++;if(!baseline)await notify("New Pokémon TCG listing",store+": "+p.title,"new-"+k.replace(/[^a-z0-9]/gi,"").slice(0,90));continue}
   old.lastSeen=now;old.title=String(p.title).slice(0,240);if(p.price)old.price=p.price;

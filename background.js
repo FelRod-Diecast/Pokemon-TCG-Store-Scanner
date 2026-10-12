@@ -57,7 +57,18 @@ async function samsScan(){
 }
 async function merge(store,items,p,m,scanSucceeded=true){const first=!m.baselined?.[store];m.baselined=m.baselined||{};for(const x of items){const k=key(x),old=p[k];if(!old){const now=new Date().toISOString();p[k]={...x,firstSeen:now,lastSeen:now,lastChecked:now,lastRestock:x.available===true?now:null,lastSellout:null};if(!first)await alertUser(x.available===true?"Pokémon TCG availability detected":"New Pokémon TCG listing",p[k],x.available===true?"Retailer indicates available; verify the product page.":x.url);continue}old.name=x.name||old.name;old.url=x.url||old.url;if(x.price)old.price=x.price;old.lastSeen=new Date().toISOString();if(x.available===true||x.available===false)await availability(old,x.available)}m.baselined=m.baselined||{};if(scanSucceeded)m.baselined[store]=true;m.lastScan=m.lastScan||{};m.lastScan[store]={at:new Date().toISOString(),candidates:items.length,baseline:first&&scanSucceeded,status:scanSucceeded?(items.length?"ok":"empty"):"error"}}
 async function availability(p,next){if(next!==true&&next!==false)return;const prev=p.available;p.available=next;p.lastChecked=new Date().toISOString();if(prev===false&&next===true){p.lastRestock=p.lastChecked;await alertUser("Pokémon TCG RESTOCK",p,"Retailer availability changed to available. Verify immediately.")}else if(prev===true&&next===false){p.lastSellout=p.lastChecked;await alertUser("Pokémon TCG sold out",p,"Retailer availability changed to unavailable.")}else if((prev===null||prev===undefined)&&next===true&&p.firstSeen!==p.lastChecked){await alertUser("Pokémon TCG availability detected",p,"Retailer indicates available; verify immediately.")}}
-async function discover(){const results={};for(const [name,fn] of [["Target",targetDiscovery],["Costco",costcoScan],["Sam's Club",samsScan]]){try{results[name]=await fn()}catch(e){results[name]={error:String(e)};console.error(name+" scan failed",e)}}const {p,m}=await state();m.lastDiscoveryRun={at:new Date().toISOString(),results};await save(p,m);return results}
+async function discover(){
+ const results={};console.info('[PTCG] Discovery cycle started');
+ for(const [name,fn] of [["Target",targetDiscovery],["Costco",costcoScan],["Sam\u0027s Club",samsScan]]){
+  const started=Date.now();try{results[name]=await fn()}catch(e){results[name]={error:String(e)};console.error('[PTCG]['+name+'] scan failed',e)}
+  const {p,m}=await state();m.lastScan=m.lastScan||{};const x=m.lastScan[name]||{};
+  x.method=x.method||(name==="Target"?"Target RedSky product search API":name==="Costco"?"Costco GDX catalog search API":"Sam\u0027s Club Vivaldi browse/search API");
+  x.endpoint=x.endpoint||(name==="Target"?"redsky.target.com/redsky_aggregations/v1/web/plp_search_v2":name==="Costco"?"gdx-api.costco.com/catalog/search/api/v1/search":"samsclub.com/api/node/vivaldi/browse/v2/products/search");m.lastScan[name]=x;
+  m.scanLog=[...(m.scanLog||[]),{store:name,phase:"discovery summary",status:x.status|| (results[name]?.error?"ERROR":"UNKNOWN"),method:x.method,endpoint:x.endpoint,rawRows:x.rawCandidates,rawObjects:x.rawObjects,candidates:x.candidates||0,at:new Date().toISOString(),error:results[name]?.error||x.errors?.join("; ")||""}].slice(-200);await save(p,m);
+  console.info('[PTCG]['+name+'] scan result',results[name]);
+ }
+ const {p,m}=await state();m.lastDiscoveryRun={at:new Date().toISOString(),results};await save(p,m);console.info('[PTCG] Discovery cycle finished',results);return results
+}
 async function stock(){let result={};try{result.Target=await targetStock()}catch(e){result.Target={error:String(e)}}const {p,m}=await state();m.lastStockRun={at:new Date().toISOString(),result};await save(p,m);return result}
 function schedule(){chrome.alarms.create(DISCOVERY,{delayInMinutes:0.2,periodInMinutes:5});chrome.alarms.create(STOCK,{delayInMinutes:0.5,periodInMinutes:3})}
 chrome.runtime.onInstalled.addListener(schedule);chrome.runtime.onStartup.addListener(schedule);
@@ -74,6 +85,9 @@ async function recordCaptcha(msg,sender){
 chrome.runtime.onMessage.addListener((msg,sender,reply)=>{
  if(msg?.type==="CAPTCHA_DETECTED"&&msg.url&&msg.store){recordCaptcha(msg,sender).then(()=>reply({ok:true})).catch(e=>reply({ok:false,error:String(e)}));return true}
  if(msg?.type==="GET_DASHBOARD"){state().then(({p,m})=>reply({products:Object.values(p).sort((a,b)=>String(b.lastChecked||b.firstSeen).localeCompare(String(a.lastChecked||a.firstSeen))),meta:m})).catch(e=>reply({products:[],meta:{},error:String(e)}));return true}
+ if(msg?.type==="GET_STORAGE_INFO"){state().then(async({p,m})=>{const bytes=await chrome.storage.local.getBytesInUse(null);reply({ok:true,productKey:PK,metaKey:MK,productCount:Object.keys(p).length,productStoreCounts:Object.fromEntries(["Target","Costco","Sam's Club"].map(s=>[s,Object.values(p).filter(x=>x.store===s).length])),metaKeys:Object.keys(m),bytes,quota:chrome.storage.local.QUOTA_BYTES||null,logCount:(m.scanLog||[]).length,baselined:m.baselined||{},lastScan:m.lastScan||{}})}).catch(e=>reply({ok:false,error:String(e)}));return true}
+ if(msg?.type==="CLEAR_SCAN_LOG"){state().then(async({p,m})=>{m.scanLog=[];await save(p,m);reply({ok:true})}).catch(e=>reply({ok:false,error:String(e)}));return true}
+ if(msg?.type==="EXPORT_STATE"){state().then(({p,m})=>reply({ok:true,export:{exportedAt:new Date().toISOString(),products:p,meta:m}})).catch(e=>reply({ok:false,error:String(e)}));return true}
  if(msg?.type==="CLEAR_CHALLENGE"){state().then(async({p,m})=>{if(m.captchaChallenges?.[msg.key])m.captchaChallenges[msg.key].active=false;await save(p,m);reply({ok:true})}).catch(e=>reply({ok:false,error:String(e)}));return true}
- if(msg?.type==="SCAN_NOW"){Promise.all([discover(),stock()]).then(result=>reply({ok:true,result})).catch(e=>reply({ok:false,error:String(e)}));return true}
+ if(msg?.type==="SCAN_NOW"){(async()=>{console.info("[PTCG] Manual scan requested");const discovery=await discover();const stockResult=await stock();console.info("[PTCG] Manual scan finished");return {discovery,stock:stockResult}})().then(result=>reply({ok:true,result})).catch(e=>reply({ok:false,error:String(e)}));return true}
 });

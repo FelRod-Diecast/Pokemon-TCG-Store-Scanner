@@ -4,16 +4,17 @@ const TARGET_KEY="9f36aeafbe60771e321a7cc95a78140772ab3e96", TARGET_STORE="1368"
 const TARGET_HEADERS={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36","Accept":"application/json, text/plain, */*","Accept-Language":"en-US,en;q=0.9","Origin":"https://www.target.com","Referer":"https://www.target.com/","redsky-client-name":"browse","redsky-client-version":"1.0.0"};
 const COSTCO_HEADERS={"Content-Type":"application/json","Accept":"application/json","client_id":"USBC","client-identifier":"168287ea-1201-45f6-9b45-5bbea49f8ee7","searchresultprovider":"GRS","locale":"en-US","Origin":"https://www.costco.com","Referer":"https://www.costco.com/","User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36"};
 const DISCOVERY="pokemon-scan-discovery", STOCK="pokemon-scan-stock";
-const INC=["pokemon tcg","pokemon trading card","trading card game","booster pack","booster bundle","booster box","booster display","elite trainer box","trainer box","collection box","premium collection","special collection","collector chest","mini tin","tin","blister","pokemon cards","trading cards"];
+const INC=["pokemon tcg","pokemon trading card","trading card game","booster pack","booster bundle","booster box","booster display","elite trainer box","trainer box","etb","collection box","premium collection","ultra premium collection","special collection","collector chest","mini tin","tin","blister","pokemon cards","trading cards","30th anniversary","30th celebration","ascended heroes","focused fighters"];
 const EXC=["cake","cookie","cupcake","costume","coloring","activity book","storybook","plush","stuffed animal","toy figure","figurine","puzzle","backpack","clothing","shirt","nintendo switch","video game","dvd","movie","snack","candy","cereal","bedding","blanket","shoe","sock"];
 const norm=v=>String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
 const clean=v=>String(v||"").replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim();
 function tcg(n){const v=norm(n);return !!v&&v.includes("pokemon")&&!EXC.some(x=>v.includes(x))&&INC.some(x=>v.includes(norm(x)))}
+function productText(root){const paths=["title","name","productName","displayName","productTitle","product_description.title","product_description.product_title","descriptors.name","descriptors.title","descriptors.productName","descriptors.productTitle","descriptors.productName.value","descriptors.productTitle.value","descriptors.productName.text","descriptors.productTitle.text","descriptors.productDescription","descriptors.shortDescription","searchAndSeo.title","searchAndSeo.productName","searchAndSeo.productTitle","searchAndSeo.productName.value","searchAndSeo.productTitle.value","seo.title","seo.name","description","product.description"];for(const path of paths){let v=root;for(const part of path.split("."))v=v?.[part];if(typeof v==="string"&&v.trim())return clean(v);if(v&&typeof v==="object")for(const k of ["value","text","label","displayValue"])if(typeof v[k]==="string"&&v[k].trim())return clean(v[k])}for(const group of [root?.variants||[],root?.skus||[]])for(const v of group){for(const k of ["title","name","productName","productTitle","description"])if(typeof v?.[k]==="string"&&v[k].trim())return clean(v[k]);for(const d of Object.values(v?.descriptors||{}))if(typeof d==="string"&&d.trim()&&/pokemon|trading card|booster|trainer box|premium collection/i.test(d))return clean(d);else if(d&&typeof d==="object")for(const z of Object.values(d))if(typeof z==="string"&&/pokemon|trading card|booster|trainer box|premium collection/i.test(z))return clean(z)}for(const d of Object.values(root?.descriptors||{}))if(typeof d==="string"&&d.trim()&&/pokemon|trading card|booster|trainer box|premium collection/i.test(d))return clean(d);else if(d&&typeof d==="object")for(const z of Object.values(d))if(typeof z==="string"&&/pokemon|trading card|booster|trainer box|premium collection/i.test(z))return clean(z);return ""}function productGtin(root){const vals=[root?.gtin,root?.upc,root?.barcode,root?.variants?.[0]?.gtin,root?.variants?.[0]?.upc,root?.skus?.[0]?.gtin,root?.skus?.[0]?.upc];for(const v of vals)if(v!=null&&/^\d{8,14}$/.test(String(v)))return String(v);return null}
 function specific(n){return !["pokemon tcg","pokemon trading cards","pokemon trading card","pokemon cards","trading cards","trading card game"].includes(norm(n))}
 function price(v){if(v==null||v==="")return null;if(typeof v==="number")return "$"+v.toFixed(2);const s=String(v).trim();return s?(s.startsWith("$")?s:(/^\d+(\.\d{1,2})?$/.test(s)?"$"+s:s)):null}
 function urlFor(store,id,url){if(url&&/^https?:\/\//i.test(String(url)))return String(url).split("#")[0];if(store==="Target"&&id)return "https://www.target.com/p/-/A-"+id;if(store==="Costco"&&id)return "https://www.costco.com/.product."+id+".html";if(store==="Sam's Club"&&id)return "https://www.samsclub.com/ip/-/"+id;return url||""}
 async function state(){const d=await chrome.storage.local.get([PK,MK]);return {p:d[PK]||{},m:d[MK]||{}}}
-async function save(p,m){await chrome.storage.local.set({[PK]:p,[MK]:m})}
+async function save(p,m){const existing=await chrome.storage.local.get(PK),saved=existing[PK]&&typeof existing[PK]==="object"?existing[PK]:{};if(Object.keys(p||{}).length===0&&Object.keys(saved).length>0){console.error("[PTCG] Refusing to overwrite non-empty saved product store with an empty object");p=saved}else if(Object.keys(saved).length>0&&p&&typeof p==="object"){for(const [k,v] of Object.entries(saved))if(!Object.prototype.hasOwnProperty.call(p,k))p[k]=v}await chrome.storage.local.set({[PK]:p,[MK]:m})}
 async function alertUser(title,p,detail){try{await chrome.notifications.create("ptcg-"+Date.now()+"-"+Math.random().toString(36).slice(2,6),{type:"basic",iconUrl:"icon.svg",title:title,message:(p.store+": "+p.name+(p.price?" · "+p.price:"")+"\n"+(detail||p.url||"")).slice(0,240),priority:2})}catch(e){console.warn("Notification failed",String(e))}}
 function inspectResponseShape(root){
  const arrays=[],examples=[],seen=new Set();
@@ -47,11 +48,11 @@ async function json(url,opts,trace){
  try{const data=JSON.parse(t);if(trace)trace.responseShape=inspectResponseShape(data);return data}catch(e){if(trace)trace.parseError=String(e);throw Error("Expected JSON: "+t.slice(0,70))}
 }
 function key(p){return p.store+":"+String(p.id||p.url||norm(p.name))}
-function targetSearchUrl(term,purchasable){const q=new URLSearchParams({key:TARGET_KEY,keyword:term,channel:"WEB",page:"/s?searchTerm="+term.replace(/ /g,"+"),visitor_id:TARGET_VISITOR_ID,pricing_store_id:TARGET_STORE,store_ids:TARGET_STORE,scheduled_delivery_store_id:TARGET_STORE,zip:ZIP_DEFAULT,default_purchasability_filter:String(purchasable),include_sponsored:"false",platform:"desktop",count:"24",offset:"0"});return "https://redsky.target.com/redsky_aggregations/v1/web/plp_search_v2?"+q}
+function targetSearchUrl(term,purchasable){const page="/s/"+String(term||"").trim().replace(/\s+/g," ");const q=new URLSearchParams({key:TARGET_KEY,keyword:term,channel:"WEB",page,visitor_id:TARGET_VISITOR_ID,pricing_store_id:TARGET_STORE,store_ids:TARGET_STORE,scheduled_delivery_store_id:TARGET_STORE,zip:ZIP_DEFAULT,default_purchasability_filter:String(purchasable),include_sponsored:"false",platform:"desktop",count:"24",offset:"0"});return "https://redsky.target.com/redsky_aggregations/v1/web/plp_search_v2?"+q}
 async function targetDiscovery(){
  const {p,m}=await state(),found=new Map();let successful=0,raw=0;const errors=[],sampleNames=[],requestLog=[];let sampleShape=null;
  for(const term of ["pokemon booster pack","pokemon tcg","pokemon elite trainer box","pokemon trading cards"]){
-  const trace={query:term,phase:"search",at:new Date().toISOString()};
+  const trace={query:term,phase:"search",at:new Date().toISOString()};const foundBefore=found.size;let queryCandidates=0;
   try{
    const d=await json(targetSearchUrl(term,false),{headers:TARGET_HEADERS},trace);successful++;
    const rows=d?.data?.search?.products||[];raw+=rows.length;trace.rawRows=rows.length;
@@ -63,10 +64,10 @@ async function targetDiscovery(){
     if(name&&trace.sampleNames.length<5)trace.sampleNames.push(name);
     const id=String(x?.tcin||"");
     if(!id||!tcg(name)||!specific(name))continue;
-    found.set(id,{store:"Target",id,name,url:urlFor("Target",id,x?.item?.enrichment?.buy_url),price:price(x?.price?.formatted_current_price||x?.price?.current_retail),available:null});
+    queryCandidates++;found.set(id,{store:"Target",id,name,url:urlFor("Target",id,x?.item?.enrichment?.buy_url),price:price(x?.price?.formatted_current_price||x?.price?.current_retail),available:null});
    }
    trace.keywordMatches=rows.filter(x=>norm(x?.item?.product_description?.title||x?.item?.product_description?.product_title).includes("pokemon")).length;
-   trace.candidates=found.size;trace.status=rows.length?(trace.candidates?"MATCHED":"FILTERED"):"EMPTY";
+   trace.candidates=queryCandidates;trace.uniqueCandidates=found.size-foundBefore;trace.status=rows.length?(trace.candidates?"MATCHED":"FILTERED"):"EMPTY";
   }catch(e){trace.error=String(e);trace.status="ERROR";errors.push(term+": "+String(e));console.warn("Target discovery "+term+": "+String(e))}
   requestLog.push(trace);
  }
@@ -76,29 +77,29 @@ async function targetDiscovery(){
 }
 async function targetStock(){
  const {p,m}=await state(), rows=Object.values(p).filter(x=>x.store==="Target"&&x.id);let checked=0;
- for(let i=0;i<rows.length;i+=24){const batch=rows.slice(i,i+24);try{const q=new URLSearchParams({key:TARGET_KEY,tcins:batch.map(x=>x.id).join(","),store_id:TARGET_STORE,pricing_store_id:TARGET_STORE,scheduled_delivery_store_id:TARGET_STORE,zip:ZIP_DEFAULT,channel:"WEB"});const d=await json("https://redsky.target.com/redsky_aggregations/v1/web/product_summary_with_fulfillment_v1?"+q,{headers:TARGET_HEADERS});const map=new Map((d?.data?.product_summaries||[]).filter(x=>x?.tcin!=null).map(x=>[String(x.tcin),x]));for(const x of batch){const s=map.get(String(x.id));if(!s)continue;const f=s.fulfillment||{}, ship=String(f.shipping_options?.availability_status||"").toUpperCase(), opts=Array.isArray(f.store_options)?f.store_options:[],pickup=opts.some(o=>String(o.order_pickup?.availability_status||"").toUpperCase()==="IN_STOCK"),instore=opts.some(o=>String(o.in_store_only?.availability_status||"").toUpperCase()==="IN_STOCK"),available=["IN_STOCK","PRE_ORDER_SELLABLE","LIMITED_STOCK"].includes(ship)||pickup||instore;x.shippingStatus=ship;x.pickupAvailable=pickup;x.inStoreAvailable=instore;x.lastChecked=new Date().toISOString();await availability(x,available);checked++}}catch(e){console.warn("Target stock batch: "+String(e))}}
+ for(let i=0;i<rows.length;i+=24){const batch=rows.slice(i,i+24);try{const q=new URLSearchParams({key:TARGET_KEY,tcins:batch.map(x=>x.id).join(","),store_id:TARGET_STORE,pricing_store_id:TARGET_STORE,scheduled_delivery_store_id:TARGET_STORE,zip:ZIP_DEFAULT,channel:"WEB"});const d=await json("https://redsky.target.com/redsky_aggregations/v1/web/product_summary_with_fulfillment_v1?"+q,{headers:TARGET_HEADERS});const map=new Map((d?.data?.product_summaries||[]).filter(x=>x?.tcin!=null).map(x=>[String(x.tcin),x]));for(const x of batch){const s=map.get(String(x.id));if(!s)continue;const f=s.fulfillment||{}, ship=String(f.shipping_options?.availability_status||"").toUpperCase(), opts=Array.isArray(f.store_options)?f.store_options:[], pickupStates=opts.map(o=>String(o.order_pickup?.availability_status||"").toUpperCase()).filter(Boolean), storeStates=opts.map(o=>String(o.in_store_only?.availability_status||"").toUpperCase()).filter(Boolean), pickup=pickupStates.some(v=>["IN_STOCK","PRE_ORDER_SELLABLE","LIMITED_STOCK"].includes(v)), instore=storeStates.some(v=>["IN_STOCK","PRE_ORDER_SELLABLE","LIMITED_STOCK"].includes(v)), positive=["IN_STOCK","PRE_ORDER_SELLABLE","LIMITED_STOCK"].includes(ship)||pickup||instore, negative=["OUT_OF_STOCK","UNAVAILABLE","SOLD_OUT","NOT_AVAILABLE"].includes(ship), storeStatesExplicit=[...pickupStates,...storeStates], allStoreOptionsUnavailable=storeStatesExplicit.length>0&&storeStatesExplicit.every(v=>["OUT_OF_STOCK","UNAVAILABLE","SOLD_OUT","NOT_AVAILABLE"].includes(v)), next=positive?true:(negative&&(!storeStatesExplicit.length||allStoreOptionsUnavailable)?false:null);x.shippingStatus=ship||"UNKNOWN";x.pickupAvailable=pickup;x.inStoreAvailable=instore;x.stockStatus=next===true?"IN STOCK":next===false?"SOLD OUT":"UNKNOWN";if(next!==null){x.lastChecked=new Date().toISOString();await availability(x,next);checked++}}}catch(e){console.warn("Target stock batch: "+String(e))}}
  m.lastStockRun={at:new Date().toISOString(),tracked:rows.length,checked:checked};await save(p,m);return {tracked:rows.length,checked}
 }
-function costcoStatus(v){const a=Object.entries(v||{}).filter(([k])=>/availability/i.test(k)).flatMap(([,x])=>Array.isArray(x)?x:[x]).map(x=>String(x||"").toUpperCase());if(a.some(x=>/IN_STOCK|LOW_STOCK|AVAILABLE|SELLABLE/.test(x)))return true;if(a.some(x=>/OUT_OF_STOCK|UNAVAILABLE|SOLD_OUT|NOT_AVAILABLE/.test(x)))return false;return null}
+function costcoStatus(value){const yes=/^(?:IN[_ -]?STOCK|LOW[_ -]?STOCK|AVAILABLE|SELLABLE|PURCHASABLE|ADD[_ -]?TO[_ -]?CART|SHIP[_ -]?AVAILABLE)$/i,no=/^(?:OUT[_ -]?OF[_ -]?STOCK|UNAVAILABLE|SOLD[_ -]?OUT|NOT[_ -]?AVAILABLE|NOT[_ -]?SELLABLE|NOT[_ -]?PURCHASABLE)$/i;const states=[],seen=new Set();function visit(v,k="",d=0){if(v==null||d>8)return;if(typeof v==="string"||typeof v==="number"||typeof v==="boolean"){if(!/availability|inventory|stock|sellable|purchasable|fulfillment|delivery|ship|quantity|offer/i.test(k))return;const s=String(v).trim();if(yes.test(s))states.push(true);else if(no.test(s))states.push(false);else if(/quantity|inventory/i.test(k)&&Number(s)===0)states.push(false);else if(/quantity|inventory/i.test(k)&&Number(s)>0)states.push(true);return}if(typeof v!=="object"||seen.has(v))return;seen.add(v);if(Array.isArray(v)){for(const x of v)visit(x,k,d+1);return}for(const [key,x] of Object.entries(v))visit(x,key,d+1)}visit(value);if(states.includes(true))return true;if(states.includes(false))return false;return null}
 async function costcoScan(){
- const {p,m}=await state(),found=new Map(),terms=["pokemon","pokemon trading cards","pokemon booster","pokemon elite trainer","pokemon collection","pokemon trading card game"];let successful=0,raw=0;const errors=[],sampleNames=[],requestLog=[];let sampleShape=null;
+ const {p,m}=await state(),found=new Map(),terms=["pokemon","pokemon trading cards","pokemon booster","pokemon elite trainer","pokemon collection","pokemon trading card game","pokemon 30th anniversary","pokemon 30th celebration","pokemon ultra premium collection","pokemon etb booster bundle"];let successful=0,raw=0;const errors=[],sampleNames=[],requestLog=[];let sampleShape=null;
  for(const term of terms){
-  const trace={query:term,phase:"search",at:new Date().toISOString()};
+  const trace={query:term,phase:"search",at:new Date().toISOString()};const foundBefore=found.size;let queryCandidates=0;
   try{
    const d=await json("https://gdx-api.costco.com/catalog/search/api/v1/search",{method:"POST",headers:COSTCO_HEADERS,body:JSON.stringify({visitorId:"0000000000000000000000000000000000",query:term,pageSize:96,offset:0,orderBy:null,searchMode:"page",personalizationEnabled:false,warehouseId:"129-wh",shipToPostal:ZIP_DEFAULT,shipToState:"TX",deliveryLocations:["129-wh"],filterBy:[],pageCategories:[]})},trace);
    successful++;const rows=d?.searchResult?.results||[];raw+=rows.length;trace.rawRows=rows.length;
    if(rows.length&&!sampleShape)sampleShape={rowKeys:Object.keys(rows[0]||{}),productKeys:Object.keys(rows[0]?.product||{}),apiShape:trace.responseShape};
    trace.sampleNames=[];
    for(const row of rows){
-    const x=row?.product||{},name=clean(x.title||x.name);
+    const x=row?.product||{},variant=x.variants?.[0]||{},name=productText(x)||productText(variant);
     if(name&&sampleNames.length<8&&!sampleNames.includes(name))sampleNames.push(name);
     if(name&&trace.sampleNames.length<5)trace.sampleNames.push(name);
-    const id=String(row.id||x.id||x.itemNumber||"");
+    const id=String(row.id||x.id||x.itemNumber||variant.id||"");
     if(!id||!tcg(name)||!specific(name))continue;
-    const vals=Object.entries(row.variantRollupValues||{}).filter(([k])=>/(^|,)price$|originalPrice/i.test(k)).flatMap(([,v])=>Array.isArray(v)?v:[v]).filter(v=>v!=null&&v!=="");
-    found.set(id,{store:"Costco",id,name,url:urlFor("Costco",id,x.uri||x.url),price:price(vals[0]),available:costcoStatus(row.variantRollupValues)});
+    queryCandidates++;const vals=Object.entries(row.variantRollupValues||{}).filter(([k])=>/(^|,)price$|originalPrice/i.test(k)).flatMap(([,v])=>Array.isArray(v)?v:[v]).filter(v=>v!=null&&v!=="");
+    found.set(id,{store:"Costco",id,name,url:urlFor("Costco",id,x.uri||x.url||variant.uri||variant.url),price:price(vals[0]??variant.price?.amount??variant.price),gtin:productGtin(x)||productGtin(variant),available:costcoStatus(row)});
    }
-   trace.keywordMatches=rows.filter(row=>norm(row?.product?.title||row?.product?.name).includes("pokemon")).length;trace.candidates=found.size;trace.status=rows.length?(trace.candidates?"MATCHED":"FILTERED"):"EMPTY";
+   trace.keywordMatches=rows.filter(row=>norm(productText(row?.product||{})).includes("pokemon")).length;trace.candidates=queryCandidates;trace.uniqueCandidates=found.size-foundBefore;trace.status=rows.length?(trace.candidates?"MATCHED":"FILTERED"):"EMPTY";
   }catch(e){trace.error=String(e);trace.status="ERROR";errors.push(term+": "+String(e));console.warn("Costco query "+term+": "+String(e))}
   requestLog.push(trace);
  }
@@ -115,14 +116,20 @@ async function samsScan(){
  try{
   const d=await json("https://www.samsclub.com/api/node/vivaldi/browse/v2/products/search?"+q,{headers:{Accept:"application/json, text/plain, */*","Accept-Language":"en-US,en;q=0.9",Referer:"https://www.samsclub.com/browse/pokemon/16860219",visitorId:m.samsVisitorId}},trace);
   successful++;sampleShape=trace.responseShape;trace.rawObjects=0;trace.sampleNames=[];
+  const productRecords=Array.isArray(d?.payload?.records)?d.payload.records:[];
+  trace.productRecordCount=productRecords.length;
+  trace.productRecordSamples=productRecords.slice(0,8).map(r=>{
+   const scalarFields=o=>Object.fromEntries(Object.entries(o||{}).filter(([,v])=>v==null||["string","number","boolean"].includes(typeof v)).map(([k,v])=>[k,typeof v==="string"?v.slice(0,140):v]));
+   return {keys:Object.keys(r||{}),productId:r?.productId??null,id:r?.id??null,descriptorsKeys:Object.keys(r?.descriptors||{}),descriptorsScalars:scalarFields(r?.descriptors),searchAndSeoKeys:Object.keys(r?.searchAndSeo||{}),searchAndSeoScalars:scalarFields(r?.searchAndSeo),skuCount:Array.isArray(r?.skus)?r.skus.length:0,firstSkuKeys:Object.keys(r?.skus?.[0]||{}),firstSkuDescriptorKeys:Object.keys(r?.skus?.[0]?.descriptors||{}),firstSkuDescriptorScalars:scalarFields(r?.skus?.[0]?.descriptors)};
+  });
   walk(d,v=>{
    rawObjects++;trace.rawObjects++;
-   const name=clean(v.name||v.productName||v.displayName||v.title||v.productTitle);
+   const name=productText(v);
    if(name&&sampleNames.length<10&&!sampleNames.includes(name))sampleNames.push(name);
    if(name&&trace.sampleNames.length<10&&!trace.sampleNames.includes(name))trace.sampleNames.push(name);
    const id=String(v.productId||v.itemId||v.itemNumber||v.sku||v.productNumber||v.id||""),raw=v.itemPageUrl||v.productUrl||v.url||v.productURL||v.link;
    if(!id||!tcg(name)||!specific(name))return;
-   found.set(id,{store:"Sam's Club",id,name,url:urlFor("Sam's Club",id,raw),price:price(v.price?.amount??v.price??v.currentPrice),available:null});
+   found.set(id,{store:"Sam's Club",id,name,url:urlFor("Sam's Club",id,raw),price:price(v.price?.amount??v.price??v.currentPrice),gtin:productGtin(v),available:typeof v.isOOS==="boolean"?!v.isOOS:null});
   },new Set());
   trace.candidates=found.size;trace.status=found.size?"MATCHED":rawObjects?"FILTERED":"EMPTY";
  }catch(e){trace.error=String(e);trace.status="ERROR";errors.push("search: "+String(e));console.warn("Sam's Club search failed: "+String(e))}
@@ -155,7 +162,7 @@ async function discover(){
  }
  const {p,m}=await state();m.lastDiscoveryRun={at:new Date().toISOString(),results};await save(p,m);console.info('[PTCG] Discovery cycle finished',results);return results
 }
-async function stock(){let result={};try{result.Target=await targetStock()}catch(e){result.Target={error:String(e)}}const {p,m}=await state();m.lastStockRun={at:new Date().toISOString(),result};await save(p,m);return result}
+async function stock(){const result={};try{result.Target=await targetStock()}catch(e){result.Target={error:String(e)};console.warn("[PTCG] Target stock refresh failed",e)}result.Costco={status:"NOT_IMPLEMENTED",message:"No independent Costco inventory refresh is implemented; discovery is not a stock check."};result["Sam's Club"]={status:"NOT_IMPLEMENTED",message:"No independent Sam's Club inventory refresh is implemented; discovery is not a stock check."};const {p,m}=await state();m.lastStockRun={at:new Date().toISOString(),result};await save(p,m);return result}
 function schedule(){chrome.alarms.create(DISCOVERY,{delayInMinutes:0.2,periodInMinutes:5});chrome.alarms.create(STOCK,{delayInMinutes:0.5,periodInMinutes:3})}
 chrome.runtime.onInstalled.addListener(schedule);chrome.runtime.onStartup.addListener(schedule);
 chrome.alarms.onAlarm.addListener(a=>{if(a.name===DISCOVERY)void discover();if(a.name===STOCK)void stock()});

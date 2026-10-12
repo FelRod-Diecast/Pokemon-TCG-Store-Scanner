@@ -115,6 +115,12 @@ async function samsScan(){
  try{
   const d=await json("https://www.samsclub.com/api/node/vivaldi/browse/v2/products/search?"+q,{headers:{Accept:"application/json, text/plain, */*","Accept-Language":"en-US,en;q=0.9",Referer:"https://www.samsclub.com/browse/pokemon/16860219",visitorId:m.samsVisitorId}},trace);
   successful++;sampleShape=trace.responseShape;trace.rawObjects=0;trace.sampleNames=[];
+  const productRecords=Array.isArray(d?.payload?.records)?d.payload.records:[];
+  trace.productRecordCount=productRecords.length;
+  trace.productRecordSamples=productRecords.slice(0,8).map(r=>{
+   const scalarFields=o=>Object.fromEntries(Object.entries(o||{}).filter(([,v])=>v==null||["string","number","boolean"].includes(typeof v)).map(([k,v])=>[k,typeof v==="string"?v.slice(0,140):v]));
+   return {keys:Object.keys(r||{}),productId:r?.productId??null,id:r?.id??null,descriptorsKeys:Object.keys(r?.descriptors||{}),descriptorsScalars:scalarFields(r?.descriptors),searchAndSeoKeys:Object.keys(r?.searchAndSeo||{}),searchAndSeoScalars:scalarFields(r?.searchAndSeo),skuCount:Array.isArray(r?.skus)?r.skus.length:0,firstSkuKeys:Object.keys(r?.skus?.[0]||{}),firstSkuDescriptorKeys:Object.keys(r?.skus?.[0]?.descriptors||{}),firstSkuDescriptorScalars:scalarFields(r?.skus?.[0]?.descriptors)};
+  });
   walk(d,v=>{
    rawObjects++;trace.rawObjects++;
    const name=clean(v.name||v.productName||v.displayName||v.title||v.productTitle);

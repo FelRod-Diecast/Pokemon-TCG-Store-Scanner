@@ -9,6 +9,8 @@ const EXC=["cake","cookie","cupcake","costume","coloring","activity book","story
 const norm=v=>String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
 const clean=v=>String(v||"").replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim();
 function tcg(n){const v=norm(n);return !!v&&v.includes("pokemon")&&!EXC.some(x=>v.includes(x))&&INC.some(x=>v.includes(norm(x)))}
+function productText(root){const paths=["title","name","productName","displayName","productTitle","product_description.title","product_description.product_title","descriptors.name","descriptors.title","descriptors.productName","descriptors.productTitle","searchAndSeo.title","searchAndSeo.productName","searchAndSeo.productTitle","seo.title","seo.name"];for(const path of paths){let v=root;for(const part of path.split("."))v=v?.[part];if(typeof v==="string"&&v.trim())return clean(v)}for(const v of root?.variants||[])for(const k of ["title","name","productName","productTitle"])if(typeof v?.[k]==="string"&&v[k].trim())return clean(v[k]);for(const v of root?.skus||[])for(const k of ["title","name","productName","productTitle"])if(typeof v?.[k]==="string"&&v[k].trim())return clean(v[k]);return ""}
+function productGtin(root){const vals=[root?.gtin,root?.upc,root?.barcode,root?.variants?.[0]?.gtin,root?.variants?.[0]?.upc,root?.skus?.[0]?.gtin,root?.skus?.[0]?.upc];for(const v of vals)if(v!=null&&/^\d{8,14}$/.test(String(v)))return String(v);return null}
 function specific(n){return !["pokemon tcg","pokemon trading cards","pokemon trading card","pokemon cards","trading cards","trading card game"].includes(norm(n))}
 function price(v){if(v==null||v==="")return null;if(typeof v==="number")return "$"+v.toFixed(2);const s=String(v).trim();return s?(s.startsWith("$")?s:(/^\d+(\.\d{1,2})?$/.test(s)?"$"+s:s)):null}
 function urlFor(store,id,url){if(url&&/^https?:\/\//i.test(String(url)))return String(url).split("#")[0];if(store==="Target"&&id)return "https://www.target.com/p/-/A-"+id;if(store==="Costco"&&id)return "https://www.costco.com/.product."+id+".html";if(store==="Sam's Club"&&id)return "https://www.samsclub.com/ip/-/"+id;return url||""}
@@ -90,15 +92,15 @@ async function costcoScan(){
    if(rows.length&&!sampleShape)sampleShape={rowKeys:Object.keys(rows[0]||{}),productKeys:Object.keys(rows[0]?.product||{}),apiShape:trace.responseShape};
    trace.sampleNames=[];
    for(const row of rows){
-    const x=row?.product||{},name=clean(x.title||x.name);
+    const x=row?.product||{},variant=x.variants?.[0]||{},name=productText(x)||productText(variant);
     if(name&&sampleNames.length<8&&!sampleNames.includes(name))sampleNames.push(name);
     if(name&&trace.sampleNames.length<5)trace.sampleNames.push(name);
-    const id=String(row.id||x.id||x.itemNumber||"");
+    const id=String(row.id||x.id||x.itemNumber||variant.id||"");
     if(!id||!tcg(name)||!specific(name))continue;
     queryCandidates++;const vals=Object.entries(row.variantRollupValues||{}).filter(([k])=>/(^|,)price$|originalPrice/i.test(k)).flatMap(([,v])=>Array.isArray(v)?v:[v]).filter(v=>v!=null&&v!=="");
-    found.set(id,{store:"Costco",id,name,url:urlFor("Costco",id,x.uri||x.url),price:price(vals[0]),available:costcoStatus(row)});
+    found.set(id,{store:"Costco",id,name,url:urlFor("Costco",id,x.uri||x.url||variant.uri||variant.url),price:price(vals[0]??variant.price?.amount??variant.price),gtin:productGtin(x)||productGtin(variant),available:costcoStatus(row)});
    }
-   trace.keywordMatches=rows.filter(row=>norm(row?.product?.title||row?.product?.name).includes("pokemon")).length;trace.candidates=queryCandidates;trace.uniqueCandidates=found.size-foundBefore;trace.status=rows.length?(trace.candidates?"MATCHED":"FILTERED"):"EMPTY";
+   trace.keywordMatches=rows.filter(row=>norm(productText(row?.product||{})).includes("pokemon")).length;trace.candidates=queryCandidates;trace.uniqueCandidates=found.size-foundBefore;trace.status=rows.length?(trace.candidates?"MATCHED":"FILTERED"):"EMPTY";
   }catch(e){trace.error=String(e);trace.status="ERROR";errors.push(term+": "+String(e));console.warn("Costco query "+term+": "+String(e))}
   requestLog.push(trace);
  }
@@ -123,12 +125,12 @@ async function samsScan(){
   });
   walk(d,v=>{
    rawObjects++;trace.rawObjects++;
-   const name=clean(v.name||v.productName||v.displayName||v.title||v.productTitle);
+   const name=productText(v);
    if(name&&sampleNames.length<10&&!sampleNames.includes(name))sampleNames.push(name);
    if(name&&trace.sampleNames.length<10&&!trace.sampleNames.includes(name))trace.sampleNames.push(name);
    const id=String(v.productId||v.itemId||v.itemNumber||v.sku||v.productNumber||v.id||""),raw=v.itemPageUrl||v.productUrl||v.url||v.productURL||v.link;
    if(!id||!tcg(name)||!specific(name))return;
-   found.set(id,{store:"Sam's Club",id,name,url:urlFor("Sam's Club",id,raw),price:price(v.price?.amount??v.price??v.currentPrice),available:null});
+   found.set(id,{store:"Sam's Club",id,name,url:urlFor("Sam's Club",id,raw),price:price(v.price?.amount??v.price??v.currentPrice),gtin:productGtin(v),available:typeof v.isOOS==="boolean"?!v.isOOS:null});
   },new Set());
   trace.candidates=found.size;trace.status=found.size?"MATCHED":rawObjects?"FILTERED":"EMPTY";
  }catch(e){trace.error=String(e);trace.status="ERROR";errors.push("search: "+String(e));console.warn("Sam's Club search failed: "+String(e))}

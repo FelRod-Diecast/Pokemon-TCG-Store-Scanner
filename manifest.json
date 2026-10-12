@@ -1,15 +1,9 @@
 {
-  "manifest_version": 3,
-  "name": "Pokémon TCG Store Scanner",
-  "version": "0.2.0",
-  "description": "Automatically discovers Pokémon TCG products and monitors retailer availability.",
-  "permissions": ["storage", "notifications", "alarms"],
-  "host_permissions": [
-    "https://www.target.com/*", "https://target.com/*",
-    "https://redsky.target.com/*",
-    "https://www.costco.com/*", "https://costco.com/*", "https://gdx-api.costco.com/*",
-    "https://www.samsclub.com/*"
-  ],
-  "background": { "service_worker": "background.js" },
-  "action": { "default_title": "Pokémon TCG Store Scanner", "default_popup": "popup.html" }
+ "manifest_version":3,"name":"Pokémon TCG Store Scanner","version":"0.3.0",
+ "description":"Automatically discovers Pokémon TCG products, monitors availability, and alerts when a retailer requires human verification.",
+ "permissions":["storage","notifications","alarms"],
+ "host_permissions":["https://www.target.com/*","https://target.com/*","https://redsky.target.com/*","https://www.costco.com/*","https://costco.com/*","https://gdx-api.costco.com/*","https://www.samsclub.com/*"],
+ "background":{"service_worker":"background.js"},
+ "content_scripts":[{"matches":["https://www.target.com/*","https://target.com/*","https://www.costco.com/*","https://costco.com/*","https://www.samsclub.com/*","https://samsclub.com/*"],"js":["captcha-watch.js"],"run_at":"document_idle"}],
+ "action":{"default_title":"Pokémon TCG Store Scanner","default_popup":"popup.html"}
 }

@@ -1,35 +1,43 @@
 # Pokémon TCG Store Scanner
 
-A Manifest V3 browser extension for observing Pokémon TCG listings on Target, Costco, and Sam's Club pages opened in your browser. The same extension code is intended to work in current Chrome and Edge.
+An Edge/Chrome Manifest V3 extension that performs **automatic background discovery and availability monitoring** for Pokémon TCG listings at Target, Costco, and Sam's Club. It does not require you to keep retailer search tabs open.
 
-## Current implementation
+## How it works
 
-- Popup dashboard with tracked listings and per-store scan timestamps.
-- Button to open search pages for the three supported retailers.
-- DOM-based extraction of likely product links, including retailer product paths and HTML product pages, and a Pokémon TCG title filter.
-- Local persistence of seen listings, with a per-store baseline to avoid a burst of first-run alerts.
-- Duplicate suppression and notifications for later new listings and recognizable availability changes.
-- Three states: `in_stock`, `sold_out`, and `unknown`. Unknown observations do not overwrite a known state.
-
-## Install in Chrome
-
-See [Chrome installation instructions](CHROME_INSTALL.md). Briefly: download and extract the repository ZIP, open `chrome://extensions`, enable **Developer mode**, and click **Load unpacked** on the extracted folder containing `manifest.json`.
+- Uses retailer-facing product search APIs from the extension service worker to discover candidate products.
+- Filters out common non-TCG Pokémon merchandise.
+- Saves products and their previous availability state in browser storage.
+- Runs discovery on a repeating browser alarm (approximately every 5 minutes).
+- Runs Target fulfillment checks on a repeating alarm (approximately every 3 minutes).
+- Checks Costco and Sam's Club availability signals when their product search APIs return them.
+- Notifies on newly discovered listings after the store's initial baseline, availability signals, restocks, and sellouts.
+- Shows tracked products, last discovery timestamps, prices when available, and stock confidence in the popup.
+- Provides a **Scan now** button to request an immediate scan cycle.
 
 ## Install in Microsoft Edge
 
-1. Download and extract the repository ZIP.
+1. Download and extract this repository ZIP.
 2. Open `edge://extensions`.
 3. Enable **Developer mode**.
 4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
-5. Open the extension popup and click **Open store searches**.
-6. Let the retailer pages load. Keep the tabs open for periodic re-checks.
+5. Leave the extension enabled. It scans in the background while Edge is running; you do not need to open search tabs.
+
+## Install in Chrome
+
+1. Download and extract this repository ZIP.
+2. Open `chrome://extensions`.
+3. Enable **Developer mode**.
+4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
+5. Leave the extension enabled. It scans in the background while Chrome is running; you do not need to open search tabs.
 
 ## Important limitations
 
-This is an early implementation, not a guarantee of live inventory. Retailer page structures can change and pages can return different content by region, session, or verification state. A visible listing does not guarantee that it can be purchased. Availability signals are inferred from recognizable page text and must be verified on the retailer's site. This extension does not bypass CAPTCHA, anti-bot controls, store restrictions, or automate checkout. If a page is challenged or blocked, complete any verification yourself.
+The extension depends on retailer endpoints and browser access. Retailer APIs can change, rate-limit requests, return incomplete data, or block access. A failed request must not be interpreted as a sellout. The Target configuration currently uses the same ZIP/store defaults as the Railway scanner (76040 / store 1368). Sam's Club inventory calls may require a valid club identifier; the current code mirrors the Railway scanner's empty default, so that retailer's successful response must be verified in a real browser run.
 
-The first scan for each store establishes a baseline and intentionally does not alert on every item already listed. Subsequent newly observed listings may trigger notifications.
+Availability is reported as a retailer signal, not a guarantee that checkout or local pickup will succeed. The extension does not bypass CAPTCHA, anti-bot checks, membership restrictions, or automate checkout. If a retailer challenges or blocks requests, it reports the error instead of attempting to evade the control.
+
+The first successful discovery cycle for each store creates a baseline to avoid a flood of initial listing alerts. Subsequent newly discovered products can trigger notifications. Browser alarms run only while the browser and extension are available; this is not a 24/7 server process.
 
 ## Validation
 
-Run `npm run check` and `npm test` with Node.js installed. These checks cover JavaScript syntax and core filter/manifest behavior; they do **not** replace live testing against each retailer's current pages.
+Run `npm run check` and `npm test` with Node.js installed. Automated tests cover syntax and basic filter/manifest behavior, but they do not replace live API checks in Edge or Chrome.

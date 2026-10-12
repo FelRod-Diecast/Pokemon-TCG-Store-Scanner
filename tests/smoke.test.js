@@ -20,3 +20,5 @@ test('Costco initializes per-query candidate counter before parsing matching row
 test('shared title filter recognizes upcoming Pokémon 30th Anniversary ETB bundle',()=>{for(const n of ['Pokemon 30th Anniversary ETB + Booster Bundle','Pokémon 30th Celebration Ultra Premium Collection'])assert.equal(s.isPokemonTCGProduct(n),true,n)});
 
 test('shared title filter recognizes weekly-guide Sam\'s Club product leads',()=>{for(const n of ['Pokemon TCG Ascended Heroes Focused Fighters Collection Box','Pokemon Ascended Heroes Elite Trainer Box'])assert.equal(s.isPokemonTCGProduct(n),true,n)});
+
+test('Target stock checker does not label missing availability data as sold out',()=>{const b=fs.readFileSync(path.join(root,'background.js'),'utf8');assert.match(b,/next=positive\?true:\(negative&&\(!storeStatesExplicit\.length\|\|allStoreOptionsUnavailable\)\?false:null\)/);assert.match(b,/if\(next!==null\)\{x\.lastChecked/);assert.match(b,/x\.stockStatus=next===true\?"IN STOCK":next===false\?"SOLD OUT":"UNKNOWN"/)});

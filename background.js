@@ -14,7 +14,7 @@ function specific(n){return !["pokemon tcg","pokemon trading cards","pokemon tra
 function price(v){if(v==null||v==="")return null;if(typeof v==="number")return "$"+v.toFixed(2);const s=String(v).trim();return s?(s.startsWith("$")?s:(/^\d+(\.\d{1,2})?$/.test(s)?"$"+s:s)):null}
 function urlFor(store,id,url){if(url&&/^https?:\/\//i.test(String(url)))return String(url).split("#")[0];if(store==="Target"&&id)return "https://www.target.com/p/-/A-"+id;if(store==="Costco"&&id)return "https://www.costco.com/.product."+id+".html";if(store==="Sam's Club"&&id)return "https://www.samsclub.com/ip/-/"+id;return url||""}
 async function state(){const d=await chrome.storage.local.get([PK,MK]);return {p:d[PK]||{},m:d[MK]||{}}}
-async function save(p,m){await chrome.storage.local.set({[PK]:p,[MK]:m})}
+async function save(p,m){const existing=await chrome.storage.local.get(PK),saved=existing[PK]&&typeof existing[PK]==="object"?existing[PK]:{};if(Object.keys(p||{}).length===0&&Object.keys(saved).length>0){console.error("[PTCG] Refusing to overwrite non-empty saved product store with an empty object");p=saved}else if(Object.keys(saved).length>0&&p&&typeof p==="object"){for(const [k,v] of Object.entries(saved))if(!Object.prototype.hasOwnProperty.call(p,k))p[k]=v}await chrome.storage.local.set({[PK]:p,[MK]:m})}
 async function alertUser(title,p,detail){try{await chrome.notifications.create("ptcg-"+Date.now()+"-"+Math.random().toString(36).slice(2,6),{type:"basic",iconUrl:"icon.svg",title:title,message:(p.store+": "+p.name+(p.price?" · "+p.price:"")+"\n"+(detail||p.url||"")).slice(0,240),priority:2})}catch(e){console.warn("Notification failed",String(e))}}
 function inspectResponseShape(root){
  const arrays=[],examples=[],seen=new Set();

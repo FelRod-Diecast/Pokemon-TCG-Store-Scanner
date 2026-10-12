@@ -18,3 +18,5 @@ test('Costco discovery includes upcoming 30th Anniversary and ETB shorthand quer
 test('Costco initializes per-query candidate counter before parsing matching rows',()=>{const b=fs.readFileSync(path.join(root,'background.js'),'utf8');const start=b.indexOf('async function costcoScan()');const end=b.indexOf('function walk(',start);assert.ok(start>=0&&end>start);const section=b.slice(start,end);assert.match(section,/const foundBefore=found\.size;let queryCandidates=0;/);assert.match(section,/queryCandidates\+\+/);assert.match(section,/trace\.candidates=queryCandidates/)});
 
 test('shared title filter recognizes upcoming Pokémon 30th Anniversary ETB bundle',()=>{for(const n of ['Pokemon 30th Anniversary ETB + Booster Bundle','Pokémon 30th Celebration Ultra Premium Collection'])assert.equal(s.isPokemonTCGProduct(n),true,n)});
+
+test('shared title filter recognizes weekly-guide Sam\'s Club product leads',()=>{for(const n of ['Pokemon TCG Ascended Heroes Focused Fighters Collection Box','Pokemon Ascended Heroes Elite Trainer Box'])assert.equal(s.isPokemonTCGProduct(n),true,n)});

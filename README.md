@@ -1,19 +1,31 @@
-# Pokémon TCG Store Scanner
+# Pokémon TCG Store Scanner (Edge-first)
 
-An Edge-first Manifest V3 browser extension for monitoring Pokémon Trading Card Game products at supported retailer pages.
+A Manifest V3 browser extension for observing Pokémon TCG listings on Target, Costco, and Sam's Club pages opened in your browser.
 
-## Scope
+## Current implementation
 
-- Monitor supported Target, Costco, and Sam’s Club product/search pages when the user opens them.
-- Filter results to Pokémon TCG products.
-- Track observed product availability with explicit `In stock`, `Sold out`, and `Unknown` states.
-- Persist observations locally and suppress duplicate alerts.
-- Provide a dashboard and safe manual handling when a retailer requests human verification.
+- Popup dashboard with tracked listings and per-store scan timestamps.
+- Button to open search pages for the three supported retailers.
+- DOM-based extraction of likely product links and a Pokémon TCG title filter.
+- Local persistence of seen listings, with a per-store baseline to avoid a burst of first-run alerts.
+- Duplicate suppression and notifications for later new listings and recognizable availability changes.
+- Three states: `in_stock`, `sold_out`, and `unknown`. Unknown observations do not overwrite a known state.
 
-## Safety and limitations
+## Install in Microsoft Edge
 
-This extension does not bypass CAPTCHA or anti-bot protections, automate checkout, or claim local inventory based only on a generic catalog listing. Availability is marked `Unknown` unless the page exposes a reliable signal. Retailer page layouts and APIs change, so each retailer adapter must be validated independently.
+1. Download or clone this repository to a folder on your computer.
+2. Open `edge://extensions`.
+3. Enable **Developer mode**.
+4. Click **Load unpacked** and choose the folder containing `manifest.json`.
+5. Open the extension popup and click **Open store searches**.
+6. Let the retailer pages load. Keep the tabs open for periodic re-checks.
 
-## Status
+## Important limitations
 
-Repository initialized. Scanner implementation and automated tests are not yet present; this README is a scope definition, not a claim that the scanner is complete.
+This is an early implementation, not a guarantee of live inventory. Retailer page structures can change and pages can return different content by region, session, or verification state. A visible listing does not guarantee that it can be purchased. Availability signals are inferred from recognizable page text and must be verified on the retailer's site. This extension does not bypass CAPTCHA, anti-bot controls, store restrictions, or automate checkout. If a page is challenged or blocked, complete any verification yourself.
+
+The first scan for each store establishes a baseline and intentionally does not alert on every item already listed. Subsequent newly observed listings may trigger notifications.
+
+## Validation
+
+Run `npm run check` and `npm test` with Node.js installed. These checks cover JavaScript syntax and core filter/manifest behavior; they do **not** replace live testing against each retailer's current pages.

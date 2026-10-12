@@ -4,5 +4,7 @@ const EXCLUDE=["cake","cookie","cupcake","costume","coloring","activity book","s
 function normalize(v){return String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim()}
 function isPokemonTCGProduct(title){const n=normalize(title);return n.includes("pokemon")&&!EXCLUDE.some(t=>n.includes(t))&&INCLUDE.some(t=>n.includes(normalize(t)))}
 function storeForUrl(value){try{const h=new URL(value).hostname.replace(/^www\./,"");if(h==="target.com")return"Target";if(h==="costco.com")return"Costco";if(h==="samsclub.com")return"Sam's Club"}catch(e){}return"Unknown"}
-root.PokemonScanner={normalize,isPokemonTCGProduct,storeForUrl};
+function normalizeGtin(value){const digits=String(value??"").replace(/[\\s-]/g,"");if(!/^\\d{8}$|^\\d{12}$|^\\d{13}$|^\\d{14}$/.test(digits))return null;let sum=0,weight=3;for(let i=digits.length-2;i>=0;i--){sum+=Number(digits[i])*weight;weight=weight===3?1:3}const check=(10-(sum%10))%10;return check===Number(digits[digits.length-1])?digits:null}
+function extractGtins(value){const found=new Set();const text=String(value??"");const re=/(?:\\d[ -]?){7,13}\\d/g;for(const match of text.matchAll(re)){const digits=match[0].replace(/[ -]/g,"");if(normalizeGtin(digits))found.add(digits)}return [...found]}
+root.PokemonScanner={normalize,isPokemonTCGProduct,storeForUrl,normalizeGtin,extractGtins};
 })(globalThis);

@@ -51,7 +51,7 @@ function targetSearchUrl(term,purchasable){const page="/s/"+String(term||"").tri
 async function targetDiscovery(){
  const {p,m}=await state(),found=new Map();let successful=0,raw=0;const errors=[],sampleNames=[],requestLog=[];let sampleShape=null;
  for(const term of ["pokemon booster pack","pokemon tcg","pokemon elite trainer box","pokemon trading cards"]){
-  const trace={query:term,phase:"search",at:new Date().toISOString()};const foundBefore=found.size;
+  const trace={query:term,phase:"search",at:new Date().toISOString()};const foundBefore=found.size;let queryCandidates=0;
   try{
    const d=await json(targetSearchUrl(term,false),{headers:TARGET_HEADERS},trace);successful++;
    const rows=d?.data?.search?.products||[];raw+=rows.length;trace.rawRows=rows.length;
@@ -63,10 +63,10 @@ async function targetDiscovery(){
     if(name&&trace.sampleNames.length<5)trace.sampleNames.push(name);
     const id=String(x?.tcin||"");
     if(!id||!tcg(name)||!specific(name))continue;
-    found.set(id,{store:"Target",id,name,url:urlFor("Target",id,x?.item?.enrichment?.buy_url),price:price(x?.price?.formatted_current_price||x?.price?.current_retail),available:null});
+    queryCandidates++;found.set(id,{store:"Target",id,name,url:urlFor("Target",id,x?.item?.enrichment?.buy_url),price:price(x?.price?.formatted_current_price||x?.price?.current_retail),available:null});
    }
    trace.keywordMatches=rows.filter(x=>norm(x?.item?.product_description?.title||x?.item?.product_description?.product_title).includes("pokemon")).length;
-   trace.candidates=found.size-foundBefore;trace.status=rows.length?(trace.candidates?"MATCHED":"FILTERED"):"EMPTY";
+   trace.candidates=queryCandidates;trace.uniqueCandidates=found.size-foundBefore;trace.status=rows.length?(trace.candidates?"MATCHED":"FILTERED"):"EMPTY";
   }catch(e){trace.error=String(e);trace.status="ERROR";errors.push(term+": "+String(e));console.warn("Target discovery "+term+": "+String(e))}
   requestLog.push(trace);
  }
@@ -95,7 +95,7 @@ async function costcoScan(){
     if(name&&trace.sampleNames.length<5)trace.sampleNames.push(name);
     const id=String(row.id||x.id||x.itemNumber||"");
     if(!id||!tcg(name)||!specific(name))continue;
-    const vals=Object.entries(row.variantRollupValues||{}).filter(([k])=>/(^|,)price$|originalPrice/i.test(k)).flatMap(([,v])=>Array.isArray(v)?v:[v]).filter(v=>v!=null&&v!=="");
+    queryCandidates++;const vals=Object.entries(row.variantRollupValues||{}).filter(([k])=>/(^|,)price$|originalPrice/i.test(k)).flatMap(([,v])=>Array.isArray(v)?v:[v]).filter(v=>v!=null&&v!=="");
     found.set(id,{store:"Costco",id,name,url:urlFor("Costco",id,x.uri||x.url),price:price(vals[0]),available:costcoStatus(row.variantRollupValues)});
    }
    trace.keywordMatches=rows.filter(row=>norm(row?.product?.title||row?.product?.name).includes("pokemon")).length;trace.candidates=found.size-foundBefore;trace.status=rows.length?(trace.candidates?"MATCHED":"FILTERED"):"EMPTY";
